@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   Share2,
@@ -14,8 +14,12 @@ import {
   Check,
   Star,
   Play,
+  Menu,
+  X,
+  ArrowUpRight,
   Check as CheckIcon,
 } from "lucide-react";
+import { Reveal, useScrolled } from "@/components/reveal";
 
 const REPO_URL = "https://github.com/chitransh-sr/paircode-editor";
 const DEMO_URL = "https://paircode-editor.vercel.app";
@@ -157,10 +161,10 @@ function Trajectory() {
   );
 }
 
-function ShotFrame({ src, alt, url }: { src: string; alt: string; url: string }) {
+function ShotFrame({ src, alt, url, href }: { src: string; alt: string; url: string; href: string }) {
   return (
     <div
-      className="relative overflow-hidden bg-black"
+      className="group shot-zoom relative overflow-hidden bg-black"
       style={{
         borderWidth: 1,
         borderStyle: "solid",
@@ -168,13 +172,24 @@ function ShotFrame({ src, alt, url }: { src: string; alt: string; url: string })
         boxShadow: "0 15px 40px -15px rgba(0,0,0,0.8), 0 0 100px -20px rgba(34,197,94,0.25)",
       }}
     >
-      <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-white/10 bg-[#0c0c10]">
+      <div className="relative z-10 flex items-center gap-1.5 px-4 py-2.5 border-b border-white/10 bg-[#0c0c10]">
         <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
         <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
-        <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E]/60" />
+        <span className="relative w-2.5 h-2.5 rounded-full bg-[#22C55E]/60 ping-ring" />
         <span className="ml-3 text-[11px] text-zinc-500 font-mono truncate">{url}</span>
       </div>
-      <img src={src} alt={alt} className="w-full h-auto block" loading="lazy" />
+      <div className="overflow-hidden">
+        <img src={src} alt={alt} className="w-full h-auto block" loading="lazy" />
+      </div>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="shot-chip absolute bottom-4 right-4 z-10 inline-flex items-center gap-1.5 px-3 py-2 bg-[#0c0c10]/90 backdrop-blur border border-white/20 text-xs font-medium text-white hover:border-[#22C55E]/60 transition-colors"
+      >
+        Open live
+        <ArrowUpRight className="w-3.5 h-3.5 text-[#22C55E]" />
+      </a>
     </div>
   );
 }
@@ -238,8 +253,37 @@ const MODES = [
   },
 ];
 
+const NAV_LINKS: Array<[string, string]> = [
+  ["Modes", "#modes"],
+  ["Features", "#features"],
+  ["Languages", "#languages"],
+  ["Room", "#room"],
+];
+
 export default function LandingPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const scrolled = useScrolled(24);
+  const heroRef = useRef<HTMLElement>(null);
+  const glowRaf = useRef(0);
+  const [glowOn, setGlowOn] = useState(false);
+
+  const onHeroMouseMove = (e: React.MouseEvent) => {
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    const el = heroRef.current;
+    if (!el) return;
+    cancelAnimationFrame(glowRaf.current);
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    glowRaf.current = requestAnimationFrame(() => {
+      el.style.setProperty("--mx", `${x}px`);
+      el.style.setProperty("--my", `${y}px`);
+      setGlowOn(true);
+    });
+  };
+
+  useEffect(() => () => cancelAnimationFrame(glowRaf.current), []);
   const cloneCmd = `git clone ${REPO_URL}.git`;
 
   const copyClone = async () => {
@@ -256,11 +300,21 @@ export default function LandingPage() {
     <div className="w-full max-w-[1536px] mx-auto relative min-h-screen flex flex-col justify-between overflow-x-clip bg-[#060608] text-zinc-100 selection:bg-white/20 selection:text-white">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(6,6,8,0.5)_65%,#060608_100%)] z-0" />
 
-      {/* ── Floating nav ─────────────────────── */}
-      <header className="fixed top-0 inset-x-0 z-50 w-full max-w-[1536px] mx-auto flex flex-col items-center pointer-events-none" style={{ paddingTop: 10, paddingLeft: 16, paddingRight: 16 }}>
+      {/* ── Sticky nav (sticks on mobile too) ─── */}
+      <header className="sticky top-0 z-50 w-full px-4 pt-3">
         <nav
-          className="w-full pointer-events-auto flex flex-col items-center justify-center backdrop-blur-xl px-3 sm:px-6 shadow-2xl"
-          style={{ borderWidth: 1, borderStyle: "solid", maxWidth: 920, borderRadius: 16, backgroundColor: "rgba(18,18,22,0.8)", paddingTop: 9, paddingBottom: 9, borderColor: "rgba(255,255,255,0.1)" }}
+          className="w-full mx-auto flex flex-col items-center justify-center backdrop-blur-xl px-3 sm:px-6 transition-shadow duration-300"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            maxWidth: 920,
+            borderRadius: 16,
+            backgroundColor: scrolled ? "rgba(10,10,14,0.92)" : "rgba(18,18,22,0.8)",
+            paddingTop: 9,
+            paddingBottom: 9,
+            borderColor: scrolled ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.1)",
+            boxShadow: scrolled ? "0 12px 40px -12px rgba(0,0,0,0.9)" : undefined,
+          }}
         >
           <div className="relative w-full flex items-center justify-between" style={{ maxWidth: 900 }}>
             <a href="#top" className="flex items-center gap-2 cursor-pointer group shrink-0">
@@ -270,13 +324,8 @@ export default function LandingPage() {
               <span className="text-[15px] font-semibold tracking-tight text-white group-hover:text-zinc-200 transition-colors duration-300">PairCode</span>
             </a>
             <div className="hidden md:flex items-center gap-1">
-              {[
-                ["Modes", "#modes"],
-                ["Features", "#features"],
-                ["Languages", "#languages"],
-                ["Room", "#room"],
-              ].map(([label, href]) => (
-                <a key={href} href={href} className="px-3 py-1.5 text-[13px] rounded-lg transition-all duration-200 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]">
+              {NAV_LINKS.map(([label, href]) => (
+                <a key={href} href={href} className="nav-link px-3 py-1.5 text-[13px] rounded-lg transition-all duration-200 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]">
                   {label}
                 </a>
               ))}
@@ -290,7 +339,7 @@ export default function LandingPage() {
               >
                 <Corners />
                 <GithubMark />
-                <span>Star</span>
+                <span className="hidden min-[400px]:inline">Star</span>
               </a>
               <a
                 href={DEMO_URL}
@@ -302,16 +351,65 @@ export default function LandingPage() {
                 <Play className="w-4 h-4 shrink-0" />
                 <span>Try live</span>
               </a>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={menuOpen}
+                className="group relative md:hidden flex items-center justify-center w-9 h-9 bg-[#141418] border border-white/20 text-white hover:border-white/40 transition-colors"
+              >
+                <Corners />
+                {menuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
             </div>
           </div>
+          {menuOpen && (
+            <div className="md:hidden w-full pt-2">
+              <div className="border-t border-white/10 pt-2 pb-1 flex flex-col">
+                {NAV_LINKS.map(([label, href], i) => (
+                  <a
+                    key={href}
+                    href={href}
+                    onClick={() => setMenuOpen(false)}
+                    className="hero-anim flex items-center justify-between px-3 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-white/[0.04] rounded-lg transition-colors"
+                    style={{ ["--hd" as string]: `${i * 60}ms` }}
+                  >
+                    {label}
+                    <span className="text-zinc-600">→</span>
+                  </a>
+                ))}
+                <a
+                  href={DEMO_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 mb-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-[#22C55E] text-black text-sm font-semibold rounded-lg active:scale-[0.98] transition-transform"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  Try live
+                </a>
+              </div>
+            </div>
+          )}
         </nav>
       </header>
 
       {/* ── Hero ─────────────────────────────── */}
-      <section id="top" className="relative flex-1 flex flex-col items-center justify-center text-center w-full pt-40 sm:pt-56 pb-14 sm:pb-20 z-10 overflow-visible">
+      <section
+        id="top"
+        ref={heroRef}
+        onMouseMove={onHeroMouseMove}
+        className="relative flex-1 flex flex-col items-center justify-center text-center w-full pt-14 sm:pt-20 pb-14 sm:pb-20 z-10 overflow-visible"
+      >
         <div className="pointer-events-none absolute inset-0 z-0 overflow-visible select-none">
           <IsoGrid />
           <FlowLines />
+          <div
+            className="absolute inset-0 opacity-0 transition-opacity duration-500"
+            style={{
+              opacity: glowOn ? 1 : 0,
+              background: "radial-gradient(480px circle at var(--mx, 50%) var(--my, 30%), rgba(34,197,94,0.09), transparent 65%)",
+            }}
+          />
         </div>
 
         <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-5xl mx-auto px-4">
@@ -319,23 +417,27 @@ export default function LandingPage() {
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 px-3 py-1.5 border border-white/10 bg-white/[0.03] text-xs text-zinc-400 hover:border-white/30 hover:text-zinc-200 transition-colors mb-7"
+            className="hero-anim inline-flex items-center gap-2 px-3 py-1.5 border border-white/10 bg-white/[0.03] text-xs text-zinc-400 hover:border-white/30 hover:text-zinc-200 transition-colors mb-7"
+            style={{ ["--hd" as string]: "0ms" }}
           >
-            <Star className="w-3.5 h-3.5 text-[#22C55E]" />
+            <span className="relative w-1.5 h-1.5 rounded-full bg-[#22C55E] ping-ring" />
             Open source · MIT — star it on GitHub
           </a>
           <h1 className="relative z-10 w-full text-center text-4xl sm:text-5xl lg:text-[62px] font-medium tracking-[-0.03em] text-white leading-[1.1] mb-6 mx-auto">
-            <span className="block">Interview together, in real time</span>
-            <span className="text-zinc-400 font-normal block mt-3 text-xl sm:text-2xl lg:text-[38px] tracking-[-0.02em]">
+            <span className="hero-anim block" style={{ ["--hd" as string]: "90ms" }}>Interview together, in real time</span>
+            <span
+              className="hero-anim text-zinc-400 font-normal block mt-3 text-xl sm:text-2xl lg:text-[38px] tracking-[-0.02em]"
+              style={{ ["--hd" as string]: "200ms" }}
+            >
               Share a link &amp; start coding
             </span>
           </h1>
-          <p className="relative z-10 max-w-[820px] mx-auto text-base sm:text-lg text-zinc-400/90 leading-relaxed font-normal mb-10">
-            <span className="lg:block">A lightweight, real-time collaborative code editor designed for technical interviews.</span>
+          <p className="hero-anim relative z-10 max-w-[820px] mx-auto text-base sm:text-lg text-zinc-400/90 leading-relaxed font-normal mb-10" style={{ ["--hd" as string]: "310ms" }}>
+            <span className="lg:block">A lightweight, real-time collaborative code editor designed for technical interviews.</span>{" "}
             <span className="lg:block">Monaco + Yjs CRDT sync + sandboxed execution — zero install, just the browser.</span>
           </p>
 
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
+          <div className="hero-anim relative z-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto" style={{ ["--hd" as string]: "420ms" }}>
             <a
               href={DEMO_URL}
               target="_blank"
@@ -369,41 +471,45 @@ export default function LandingPage() {
               <span className="relative z-10 text-white/40 group-hover:text-black group-hover:translate-x-1 transition-all duration-300 pl-2">→</span>
             </a>
           </div>
-          <p className="text-[12px] text-zinc-500 mt-4">Free &amp; open source · MIT · No sign-up needed</p>
+          <p className="hero-anim text-[12px] text-zinc-500 mt-4" style={{ ["--hd" as string]: "520ms" }}>Free &amp; open source · MIT · No sign-up needed</p>
         </div>
       </section>
 
       {/* ── Product screenshot ───────────────── */}
       <section className="relative w-full flex flex-col items-center justify-center px-4 sm:px-6 pt-6 sm:pt-10 pb-16 sm:pb-24 z-20 overflow-visible">
-        <div className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 h-64 bg-green-500/10 blur-[130px] rounded-full will-change-[width,opacity]" style={{ width: "50%", opacity: 0.35 }} />
-        <div className="relative will-change-transform w-full" style={{ maxWidth: 960 }}>
-          <ShotFrame src="/screenshots/home.png" alt="PairCode lobby — interviewer and candidate join cards" url="paircode-editor.vercel.app" />
+        <div className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 h-64 bg-green-500/10 blur-[130px] rounded-full will-change-[width,opacity] animate-drift" style={{ width: "50%", opacity: 0.35 }} />
+        <Reveal className="relative will-change-transform w-full" >
+          <div style={{ maxWidth: 960 }} className="mx-auto">
+          <ShotFrame src="/screenshots/home.png" alt="PairCode lobby — interviewer and candidate join cards" url="paircode-editor.vercel.app" href={DEMO_URL} />
           <p className="text-center text-xs text-zinc-500 font-mono mt-4">The lobby — interviewers create rooms, candidates join with a link</p>
-        </div>
+          </div>
+        </Reveal>
       </section>
 
       {/* ── Modes ────────────────────────────── */}
       <section id="modes" className="relative w-full border-t border-white/[0.08] bg-[#07070a] px-4 sm:px-6 lg:px-8 py-20 sm:py-24 overflow-hidden z-10">
         <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#22C55E]/[0.03] blur-[150px] rounded-full" />
-        <div className="relative z-10 w-full max-w-4xl mx-auto text-center mb-12">
+        <Reveal className="relative z-10 w-full max-w-4xl mx-auto text-center mb-12">
+          <p className="font-mono text-[11px] tracking-[0.2em] text-[#22C55E] mb-3">// HOW IT WORKS</p>
           <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-medium tracking-[-0.025em] text-white leading-tight mb-3">One link. Three steps.</h2>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">From zero to a live interview in under a minute — no accounts, no downloads.</p>
-        </div>
+        </Reveal>
 
         <div className="relative w-full max-w-6xl mx-auto flex flex-col items-center">
-          <div className="relative z-20 flex flex-col items-center">
+          <Reveal className="relative z-20 flex flex-col items-center">
             <div className="group relative w-20 h-20 sm:w-24 sm:h-24 border border-white/20 hover:border-[#22C55E]/60 bg-[#0c0c12] p-3.5 sm:p-4 flex items-center justify-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.1)] transition-colors duration-300">
               <Corners />
               <PairMark className="w-full h-full brightness-110 contrast-125 drop-shadow-[0_2px_8px_rgba(34,197,94,0.3)]" />
             </div>
-          </div>
+          </Reveal>
 
           <Trajectory />
           <div className="w-[1px] h-8 bg-gradient-to-b from-[#22C55E]/40 via-white/15 to-transparent block md:hidden mb-4" />
 
           <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch mb-12">
-            {MODES.map((m) => (
-              <div key={m.n} className="group relative border transition-all duration-300 bg-[#0c0c11] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col p-6 sm:p-7 border-white/[0.12] hover:border-[#22C55E]/40">
+            {MODES.map((m, i) => (
+              <Reveal key={m.n} delay={i * 100} className="h-full">
+              <div className="group card-lift relative border transition-all duration-300 bg-[#0c0c11] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col p-6 sm:p-7 border-white/[0.12] hover:border-[#22C55E]/40 h-full">
                 <Corners />
                 <div className="relative z-10 flex flex-col h-full">
                   <div className="flex items-center mb-3">
@@ -425,10 +531,11 @@ export default function LandingPage() {
                   </ul>
                 </div>
               </div>
+              </Reveal>
             ))}
           </div>
 
-          <div className="z-20 flex items-center justify-center">
+          <Reveal className="z-20 flex items-center justify-center">
             <a
               href={DEMO_URL}
               target="_blank"
@@ -445,7 +552,7 @@ export default function LandingPage() {
               </span>
               <span className="relative z-10 text-white/50 group-hover:text-black group-hover:translate-x-1 transition-all duration-300 pl-3">→</span>
             </a>
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -456,37 +563,41 @@ export default function LandingPage() {
 
       {/* ── Features ─────────────────────────── */}
       <section id="features" className="relative w-full px-4 sm:px-6 lg:px-8 py-20 sm:py-24 z-10">
-        <div className="relative z-10 w-full max-w-4xl mx-auto text-center mb-12">
+        <Reveal className="relative z-10 w-full max-w-4xl mx-auto text-center mb-12">
+          <p className="font-mono text-[11px] tracking-[0.2em] text-[#22C55E] mb-3">// FEATURES</p>
           <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-medium tracking-[-0.025em] text-white leading-tight mb-3">Built for interviews</h2>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">Everything a live coding session needs — nothing it doesn&apos;t.</p>
-        </div>
+        </Reveal>
         <div className="w-full max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="group relative border bg-[#0c0c11] p-6 sm:p-7 transition-all duration-300 border-white/[0.12] hover:border-[#22C55E]/40 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)]">
+          {FEATURES.map((f, i) => (
+            <Reveal key={f.title} delay={(i % 3) * 100}>
+            <div className="group card-lift relative border bg-[#0c0c11] p-6 sm:p-7 transition-all duration-300 border-white/[0.12] hover:border-[#22C55E]/40 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] h-full">
               <Corners />
-              <div className="w-10 h-10 bg-[#22C55E]/15 border border-[#22C55E]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-10 h-10 bg-[#22C55E]/15 border border-[#22C55E]/20 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">
                 <f.icon className="w-5 h-5 text-[#22C55E]" />
               </div>
               <h3 className="text-lg font-medium text-white tracking-tight mb-2">{f.title}</h3>
               <p className="text-[13px] text-zinc-400 leading-relaxed">{f.body}</p>
             </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ── Languages marquee ────────────────── */}
       <section id="languages" className="relative w-full border-t border-white/[0.08] bg-[#07070a] py-16 sm:py-20 overflow-hidden z-10">
-        <div className="text-center mb-10 px-4">
+        <Reveal className="text-center mb-10 px-4">
+          <p className="font-mono text-[11px] tracking-[0.2em] text-[#22C55E] mb-3">// LANGUAGES</p>
           <h2 className="text-3xl sm:text-4xl font-medium tracking-tight text-white mb-3">15+ languages, one link</h2>
           <p className="text-zinc-400 max-w-xl mx-auto">Frontend to systems — pick the language per room, run it sandboxed.</p>
-        </div>
+        </Reveal>
         <div
           className="relative overflow-hidden"
           style={{ maskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent)" }}
         >
           <div className="flex w-max animate-paircode-marquee gap-3 pr-3">
             {[...LANGUAGES, ...LANGUAGES].map((lang, i) => (
-              <span key={`${lang}-${i}`} className="px-4 py-2 text-sm whitespace-nowrap bg-[#0c0c11] border border-white/10 text-zinc-200">
+              <span key={`${lang}-${i}`} className="px-4 py-2 text-sm whitespace-nowrap bg-[#0c0c11] border border-white/10 text-zinc-200 hover:bg-white hover:text-black hover:border-white transition-colors cursor-default">
                 {lang}
               </span>
             ))}
@@ -496,16 +607,18 @@ export default function LandingPage() {
 
       {/* ── Inside a room ────────────────────── */}
       <section id="room" className="relative w-full px-4 sm:px-6 lg:px-8 py-20 sm:py-24 z-10">
-        <div className="relative z-10 w-full max-w-4xl mx-auto text-center mb-12">
+        <Reveal className="relative z-10 w-full max-w-4xl mx-auto text-center mb-12">
+          <p className="font-mono text-[11px] tracking-[0.2em] text-[#22C55E] mb-3">// INSIDE A ROOM</p>
           <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-medium tracking-[-0.025em] text-white leading-tight mb-3">Inside a room</h2>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">Candidates join with a name and cursor color — then it&apos;s just code.</p>
-        </div>
-        <div className="w-full max-w-5xl mx-auto">
-          <ShotFrame src="/screenshots/room.png" alt="PairCode room — editor, run toolbar, join modal and console" url="paircode-editor.vercel.app/room/…" />
-        </div>
+        </Reveal>
+        <Reveal className="w-full max-w-5xl mx-auto">
+          <ShotFrame src="/screenshots/room.png" alt="PairCode room — editor, run toolbar, join modal and console" url="paircode-editor.vercel.app/room/…" href={DEMO_URL} />
+        </Reveal>
 
         <div className="w-full max-w-5xl mx-auto grid md:grid-cols-2 gap-6 mt-10">
-          <div className="group relative bg-[#0c0c11] border border-white/[0.12] hover:border-[#22C55E]/40 transition-colors overflow-hidden">
+          <Reveal delay={0} className="min-w-0">
+          <div className="group card-lift relative bg-[#0c0c11] border border-white/[0.12] hover:border-[#22C55E]/40 transition-colors overflow-hidden h-full min-w-0">
             <Corners />
             <div className="flex items-center gap-1.5 px-4 py-3 border-b border-white/[0.08]">
               <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
@@ -513,7 +626,7 @@ export default function LandingPage() {
               <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E]/60" />
               <span className="ml-2 text-[11px] text-zinc-500 font-mono">terminal</span>
             </div>
-            <pre className="p-5 font-mono text-[13px] leading-7 text-zinc-200 overflow-x-auto">
+            <pre className="p-5 font-mono text-[13px] leading-7 text-zinc-200 overflow-x-auto max-w-full">
               <code>
                 <span className="text-zinc-500"># clone the repo</span>{"\n"}
                 <span className="text-[#22C55E]">$ </span>git clone {REPO_URL}.git{"\n"}
@@ -532,8 +645,10 @@ export default function LandingPage() {
               </button>
             </div>
           </div>
+          </Reveal>
 
-          <div className="group relative bg-[#0c0c11] border border-white/[0.12] hover:border-[#22C55E]/40 transition-colors p-6 sm:p-7">
+          <Reveal delay={120} className="min-w-0">
+          <div className="group card-lift relative bg-[#0c0c11] border border-white/[0.12] hover:border-[#22C55E]/40 transition-colors p-6 sm:p-7 h-full min-w-0">
             <Corners />
             <h3 className="text-xl font-medium text-white tracking-tight mb-1">Every room ships with</h3>
             <p className="text-[13px] text-zinc-400 mb-5">No database, no API keys — rooms live in server memory.</p>
@@ -553,16 +668,18 @@ export default function LandingPage() {
             </ul>
             <div className="flex flex-wrap gap-2 mt-6">
               {["Next.js 16", "Monaco v0.57", "Yjs CRDT", "Tailwind v4"].map((t) => (
-                <span key={t} className="px-2.5 py-1 text-[11px] font-mono bg-white/[0.03] border border-white/10 text-zinc-400">{t}</span>
+                <span key={t} className="px-2.5 py-1 text-[11px] font-mono bg-white/[0.03] border border-white/10 text-zinc-400 hover:border-[#22C55E]/50 hover:text-zinc-200 transition-colors cursor-default">{t}</span>
               ))}
             </div>
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ── Open-source CTA ──────────────────── */}
       <section className="relative w-full px-4 sm:px-6 lg:px-8 pb-20 z-10">
-        <div className="group relative w-full max-w-4xl mx-auto bg-[#0c0c11] border border-white/[0.12] hover:border-[#22C55E]/40 transition-colors p-8 md:p-12 text-center">
+        <Reveal className="w-full max-w-4xl mx-auto">
+        <div className="group card-lift relative bg-[#0c0c11] border border-white/[0.12] hover:border-[#22C55E]/40 transition-colors p-8 md:p-12 text-center">
           <Corners />
           <div className="w-12 h-12 bg-[#22C55E]/15 border border-[#22C55E]/20 flex items-center justify-center mx-auto mb-5">
             <GithubMark className="w-6 h-6 text-[#22C55E]" />
@@ -598,6 +715,7 @@ export default function LandingPage() {
           </div>
           <p className="mt-6 font-mono text-[11px] text-zinc-500 break-all">{REPO_URL}</p>
         </div>
+        </Reveal>
       </section>
 
       {/* ── Footer ───────────────────────────── */}
